@@ -3,68 +3,459 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบบันทึกงบประมาณและค่าใช้จ่าย (Cloud Sync)</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>ระบบวางแผน & บันทึกงบเที่ยว (Cloud Multi-Device)</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Prompt -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { font-family: 'Prompt', sans-serif; }
+        ::-webkit-scrollbar { height: 6px; width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen text-slate-800 pb-12">
-    <div class="max-w-md mx-auto p-4 sm:p-6">
-        <!-- Header -->
-        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl p-6 text-white shadow-lg mb-6">
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <h1 class="text-xl font-bold">บันทึกงบประมาณและค่าใช้จ่าย</h1>
-                    <p class="text-xs text-blue-100 mt-1" id="trip-id-display">กำลังเชื่อมต่อคลาวด์...</p>
-                </div>
-                <span id="sync-status" class="bg-blue-500/50 text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> ซิงค์แล้ว
-                </span>
-            </div>
+<body class="bg-slate-100 min-h-screen text-slate-800 pb-12">
 
-            <!-- Summary Cards -->
-            <div class="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-blue-500/30 text-center">
-                <div>
-                    <p class="text-[11px] text-blue-100">งบประมาณรวม</p>
-                    <p id="total-budget" class="text-base font-bold mt-0.5">0.00</p>
-                </div>
-                <div>
-                    <p class="text-[11px] text-blue-100">ใช้จ่ายรวม</p>
-                    <p id="total-expense" class="text-base font-bold mt-0.5 text-rose-200">0.00</p>
-                </div>
-                <div>
-                    <p class="text-[11px] text-blue-100">คงเหลือ</p>
-                    <p id="total-balance" class="text-base font-bold mt-0.5 text-emerald-200">0.00</p>
-                </div>
-            </div>
+<div class="bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md">
+    <div class="max-w-4xl mx-auto px-4 py-6 text-center sm:text-left sm:flex sm:items-center sm:justify-between">
+        <div>
+            <h1 class="text-2xl sm:text-3xl font-bold flex items-center justify-center sm:justify-start gap-2">
+                <i class="fa-solid fa-plane-departure text-amber-300"></i>
+                ระบบวางแผน & บันทึกงบเที่ยว
+            </h1>
+            <p class="text-teal-100 text-xs sm:text-sm mt-1">แชร์ลิงก์นี้เปิดในมือถือหลายเครื่อง เพื่อดูและบันทึกข้ามอุปกรณ์พร้อมกันแบบเรียลไทม์</p>
         </div>
-
-        <!-- Share Link Button -->
-        <div class="mb-6">
-            <button onclick="shareTrip()" class="w-full bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium py-2.5 px-4 rounded-2xl shadow-sm text-sm transition flex items-center justify-center gap-2">
-                🔗 คัดลอกลิงก์ทริปนี้ไปเปิดในมือถือเครื่องอื่น
+        <div class="mt-4 sm:mt-0 flex gap-2 justify-center">
+            <button onclick="shareTrip()" class="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white text-xs px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow-sm font-medium">
+                <i class="fa-solid fa-share-nodes"></i> แชร์ลิงก์ให้เพื่อน
+            </button>
+            <button onclick="confirmReset()" class="bg-red-500/80 hover:bg-red-600 text-white text-xs px-3 py-2 rounded-lg transition flex items-center gap-1.5">
+                <i class="fa-solid fa-trash-can"></i> รีเซ็ตทริป
             </button>
         </div>
+    </div>
+</div>
 
-        <!-- Add Transaction Form -->
-        <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 mb-6">
-            <h2 class="text-sm font-bold text-slate-700 mb-3">เพิ่มรายการ (งบหรือค่าใช้จ่าย)</h2>
-            <form id="transaction-form" onsubmit="addTransaction(event)" class="space-y-3">
-                <div>
-                    <label class="block text-xs font-medium text-slate-500 mb-1">ประเภทรายการ</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button type="button" id="btn-type-budget" onclick="setEntryType('budget')" class="py-2 text-xs font-semibold rounded-xl border border-emerald-500 bg-emerald-50 text-emerald-700 transition">เงินงบประมาณเข้า</button>
-                        <button type="button" id="btn-type-expense" onclick="setEntryType('expense')" class="py-2 text-xs font-semibold rounded-xl border border-slate-200 text-slate-600 transition">รายจ่ายออก</button>
-                    </div>
+<main class="max-w-4xl mx-auto px-4 mt-6 space-y-6">
+
+    <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-lg flex-shrink-0">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+            </div>
+            <div>
+                <h3 class="text-sm font-bold text-emerald-900">สถานะซิงค์คลาวด์อัตโนมัติ</h3>
+                <p id="syncStatus" class="text-xs text-emerald-700">กำลังเชื่อมต่อฐานข้อมูลคลาวด์...</p>
+            </div>
+        </div>
+        <button onclick="shareTrip()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4 py-2.5 rounded-xl transition font-medium flex items-center justify-center gap-2 shadow-sm">
+            <i class="fa-solid fa-link"></i> คัดลอกลิงก์ทริปนี้
+        </button>
+    </div>
+
+    <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200/80">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-5">
+            <div>
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-1">
+                    <i class="fa-solid fa-wallet text-teal-600 mr-1"></i> งบประมาณรวมทั้งหมด
+                </span>
+                <span id="totalBudget" class="text-2xl sm:text-3xl font-bold text-teal-600">0 ฿</span>
+                <span class="text-xs text-slate-400 block mt-0.5">(มาจากรายการหมวด "งบประมาณ" ด้านล่าง)</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 sm:gap-4 sm:w-auto w-full">
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+                    <span class="text-xs text-slate-500 block">ใช้ไปทั้งหมด</span>
+                    <span id="totalExpense" class="text-lg font-bold text-slate-700">0 ฿</span>
                 </div>
-                <div>
-                    <label class="block text-xs font-medium text-slate-500 mb-1">ชื่อรายการ</label>
-                    <input type="text" id="desc-input" required placeholder="เช่น งบตั้งต้น หรือ ค่าอาหาร" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <div id="remainingCard" class="bg-emerald-50 p-3 rounded-xl border border-emerald-100 text-center transition-colors">
+                    <span id="remainingLabel" class="text-xs text-emerald-700 font-medium block">คงเหลือ</span>
+                    <span id="remainingBudget" class="text-lg font-bold text-emerald-600">0 ฿</span>
                 </div>
-                <div>
-                    <label class="block text-xs font-medium text-slate-500 mb-1">จำนวนเงิน (บาท)</label>
-                    <input type="number" step="any" id="amount-input" required placeholder="0.00" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+        </div>
+
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">สรุปค่าใช้จ่ายแยก 4 ด้าน</h3>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-amber-50/70 border border-amber-100 p-3.5 rounded-xl text-center flex flex-col justify-between">
+                <div class="text-amber-600 mb-1">
+                    <i class="fa-solid fa-ticket text-xl"></i>
+                    <span class="block text-xs font-medium text-amber-900 mt-1">🎯 กิจกรรม</span>
                 </div>
-                <button type
+                <span id="totalActivity" class="text-base font-bold text-amber-700">0 ฿</span>
+            </div>
+            <div class="bg-blue-50/70 border border-blue-100 p-3.5 rounded-xl text-center flex flex-col justify-between">
+                <div class="text-blue-600 mb-1">
+                    <i class="fa-solid fa-car text-xl"></i>
+                    <span class="block text-xs font-medium text-blue-900 mt-1">🚗 การเดินทาง</span>
+                </div>
+                <span id="totalTransport" class="text-base font-bold text-blue-700">0 ฿</span>
+            </div>
+            <div class="bg-indigo-50/70 border border-indigo-100 p-3.5 rounded-xl text-center flex flex-col justify-between">
+                <div class="text-indigo-600 mb-1">
+                    <i class="fa-solid fa-hotel text-xl"></i>
+                    <span class="block text-xs font-medium text-indigo-900 mt-1">🏨 ที่พัก</span>
+                </div>
+                <span id="totalHotel" class="text-base font-bold text-indigo-700">0 ฿</span>
+            </div>
+            <div class="bg-rose-50/70 border border-rose-100 p-3.5 rounded-xl text-center flex flex-col justify-between">
+                <div class="text-rose-600 mb-1">
+                    <i class="fa-solid fa-utensils text-xl"></i>
+                    <span class="block text-xs font-medium text-rose-900 mt-1">🍲 อาหาร</span>
+                </div>
+                <span id="totalFood" class="text-base font-bold text-rose-700">0 ฿</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200/80">
+        <h2 class="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-square-plus text-teal-600"></i> เพิ่มรายการใหม่ (เลือกหมวด "งบประมาณ" เพื่อเพิ่มเงินตั้งต้น)
+        </h2>
+        <form id="expenseForm" onsubmit="addExpense(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            <div>
+                <label for="expDate" class="block text-xs font-medium text-slate-600 mb-1">วันที่</label>
+                <input type="date" id="expDate" required
+                    class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+            </div>
+            <div>
+                <label for="expCategory" class="block text-xs font-medium text-slate-600 mb-1">หมวดหมู่</label>
+                <select id="expCategory" required
+                    class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none bg-white">
+                    <option value="" disabled selected>-- เลือกหมวดหมู่ --</option>
+                    <option value="งบประมาณ">💰 งบประมาณ (เงินตั้งต้น/เติมเงิน)</option>
+                    <option value="กิจกรรม">🎯 กิจกรรม</option>
+                    <option value="การเดินทาง">🚗 การเดินทาง</option>
+                    <option value="ที่พัก">🏨 ที่พัก</option>
+                    <option value="อาหาร">🍲 อาหาร</option>
+                </select>
+            </div>
+            <div>
+                <label for="expTitle" class="block text-xs font-medium text-slate-600 mb-1">ชื่อรายการ</label>
+                <input type="text" id="expTitle" placeholder="เช่น เงินตั้งต้นทริป, ค่าตั๋ว" required
+                    class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+            </div>
+            <div>
+                <label for="expAmount" class="block text-xs font-medium text-slate-600 mb-1">จำนวนเงิน (บาท)</label>
+                <input type="number" id="expAmount" placeholder="0.00" min="0.01" step="any" required
+                    class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+            </div>
+            <div class="sm:col-span-2 lg:col-span-4 mt-1">
+                <button type="submit"
+                    class="w-full bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-medium py-2.5 px-4 rounded-xl shadow-sm transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-plus"></i> บันทึกรายการ
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200/80">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <h2 class="text-base font-semibold text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-receipt text-teal-600"></i> ประวัติรายการทั้งหมด
+            </h2>
+            <div class="flex items-center gap-2">
+                <label for="filterCategory" class="text-xs text-slate-500 whitespace-nowrap">กรองหมวดหมู่:</label>
+                <select id="filterCategory" onchange="renderExpenses()"
+                    class="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:ring-2 focus:ring-teal-500 outline-none">
+                    <option value="ทั้งหมด">ทั้งหมด</option>
+                    <option value="งบประมาณ">💰 งบประมาณ</option>
+                    <option value="กิจกรรม">🎯 กิจกรรม</option>
+                    <option value="การเดินทาง">🚗 การเดินทาง</option>
+                    <option value="ที่พัก">🏨 ที่พัก</option>
+                    <option value="อาหาร">🍲 อาหาร</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse min-w-[500px]">
+                <thead>
+                    <tr class="border-b border-slate-200 text-xs font-semibold text-slate-500 bg-slate-50/80">
+                        <th class="py-2.5 px-3 rounded-l-lg">วันที่</th>
+                        <th class="py-2.5 px-3">หมวดหมู่</th>
+                        <th class="py-2.5 px-3">รายการ</th>
+                        <th class="py-2.5 px-3 text-right">จำนวนเงิน</th>
+                        <th class="py-2.5 px-3 text-center rounded-r-lg">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="expenseTableBody" class="divide-y divide-slate-100 text-sm"></tbody>
+            </table>
+        </div>
+
+        <div id="emptyState" class="hidden text-center py-8 text-slate-400">
+            <i class="fa-regular fa-folder-open text-3xl mb-2 block"></i>
+            <p class="text-sm">ยังไม่มีรายการในขณะนี้</p>
+        </div>
+    </div>
+</main>
+
+<div id="customModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 text-center shadow-xl">
+        <div id="modalIcon" class="text-3xl mb-2 text-teal-600"><i class="fa-solid fa-circle-info"></i></div>
+        <h3 id="modalTitle" class="text-base font-bold text-slate-800 mb-1">แจ้งเตือน</h3>
+        <p id="modalMessage" class="text-xs text-slate-600 mb-4"></p>
+        <div class="flex justify-center gap-2" id="modalActions">
+            <button onclick="closeModal()" class="bg-teal-600 text-white text-xs px-4 py-2 rounded-xl font-medium">ตกลง</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const BIN_ID = "6acc57a1ac6210605a296392";
+    const API_KEY = "$2a$10$d2fLdBv0Y.E2.UzQ5UWGzu7.mfMdKXWfwKeKCbS28PZFe4LrdC1XS";
+
+    const urlParams = new URLSearchParams(window.location.search);
+    let tripId = urlParams.get('trip');
+
+    if (!tripId) {
+        tripId = localStorage.getItem('tb_trip_id');
+        if (!tripId) {
+            tripId = 'trip_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+            localStorage.setItem('tb_trip_id', tripId);
+        }
+        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?trip=' + tripId;
+        window.history.replaceState({path: newUrl}, '', newUrl);
+    } else {
+        localStorage.setItem('tb_trip_id', tripId);
+    }
+
+    let expenses = [];
+
+    const categoryBadges = {
+        'งบประมาณ': 'bg-teal-100 text-teal-800 border-teal-200',
+        'กิจกรรม': 'bg-amber-100 text-amber-800 border-amber-200',
+        'การเดินทาง': 'bg-blue-100 text-blue-800 border-blue-200',
+        'ที่พัก': 'bg-indigo-100 text-indigo-800 border-indigo-200',
+        'อาหาร': 'bg-rose-100 text-rose-800 border-rose-200'
+    };
+
+    async function loadDataFromCloud() {
+        try {
+            const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                headers: { 'X-Master-Key': API_KEY }
+            });
+            const json = await res.json();
+            if (json.record && json.record[tripId] && Array.isArray(json.record[tripId].expenses)) {
+                expenses = json.record[tripId].expenses;
+            } else {
+                expenses = [];
+            }
+            renderExpenses();
+            document.getElementById('syncStatus').innerText = 'เชื่อมต่อฐานข้อมูลคลาวด์เรียบร้อย (พร้อมใช้งานข้ามเครื่อง)';
+        } catch (err) {
+            console.error("โหลดข้อมูลไม่สำเร็จ:", err);
+            fallbackLocalStorage();
+        }
+    }
+
+    async function saveDataToCloud() {
+        document.getElementById('syncStatus').innerText = 'กำลังบันทึกข้อมูลลงคลาวด์...';
+        localStorage.setItem('tb_expenses_data_' + tripId, JSON.stringify(expenses));
+        try {
+            const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                headers: { 'X-Master-Key': API_KEY }
+            });
+            const json = await res.json();
+            let allData = json.record || {};
+            
+            allData[tripId] = { expenses: expenses };
+
+            await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Master-Key': API_KEY
+                },
+                body: JSON.stringify(allData)
+            });
+
+            document.getElementById('syncStatus').innerText = 'ซิงค์ข้อมูลคลาวด์ล่าสุดสำเร็จแล้ว';
+        } catch (err) {
+            console.error('Save to cloud failed:', err);
+            document.getElementById('syncStatus').innerText = 'บันทึกลงคลาวด์ขัดข้อง (บันทึกในเครื่องสำรองอัตโนมัติ)';
+        }
+    }
+
+    function fallbackLocalStorage() {
+        document.getElementById('syncStatus').innerText = 'ใช้งานแบบบันทึกในเครื่อง (Offline Mode)';
+        try {
+            expenses = JSON.parse(localStorage.getItem('tb_expenses_data_' + tripId)) || [];
+        } catch (e) {
+            expenses = [];
+        }
+        renderExpenses();
+    }
+
+    window.onload = function() {
+        document.getElementById('expDate').value = new Date().toISOString().split('T')[0];
+        loadDataFromCloud();
+    };
+
+    window.showModal = function(title, message, isConfirm = false, onConfirm = null) {
+        document.getElementById('modalTitle').innerText = title;
+        document.getElementById('modalMessage').innerText = message;
+        const actions = document.getElementById('modalActions');
+        
+        if (isConfirm) {
+            actions.innerHTML = `
+                <button onclick="closeModal()" class="bg-slate-200 text-slate-700 text-xs px-4 py-2 rounded-xl font-medium">ยกเลิก</button>
+                <button id="btnConfirmAction" class="bg-red-500 text-white text-xs px-4 py-2 rounded-xl font-medium">ยืนยัน</button>
+            `;
+            document.getElementById('btnConfirmAction').onclick = function() {
+                closeModal();
+                if (onConfirm) onConfirm();
+            };
+        } else {
+            actions.innerHTML = `<button onclick="closeModal()" class="bg-teal-600 text-white text-xs px-4 py-2 rounded-xl font-medium">ตกลง</button>`;
+        }
+        
+        const modal = document.getElementById('customModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    };
+
+    window.closeModal = function() {
+        const modal = document.getElementById('customModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    };
+
+    window.addExpense = async function(e) {
+        e.preventDefault();
+        const date = document.getElementById('expDate').value;
+        const category = document.getElementById('expCategory').value;
+        const title = document.getElementById('expTitle').value.trim();
+        const amount = parseFloat(document.getElementById('expAmount').value);
+
+        if (!date || !category || !title || isNaN(amount) || amount <= 0) return;
+
+        expenses.push({ id: Date.now(), date, category, title, amount });
+
+        document.getElementById('expTitle').value = '';
+        document.getElementById('expAmount').value = '';
+        document.getElementById('expCategory').selectedIndex = 0;
+
+        renderExpenses();
+        await saveDataToCloud();
+    };
+
+    window.deleteExpense = async function(id) {
+        expenses = expenses.filter(item => item.id !== id);
+        renderExpenses();
+        await saveDataToCloud();
+    };
+
+    window.renderExpenses = function() {
+        const tbody = document.getElementById('expenseTableBody');
+        const emptyState = document.getElementById('emptyState');
+        const filter = document.getElementById('filterCategory').value;
+        tbody.innerHTML = '';
+
+        let filtered = filter === 'ทั้งหมด' ? expenses : expenses.filter(i => i.category === filter);
+        filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        if (filtered.length === 0) {
+            emptyState.classList.remove('hidden');
+        } else {
+            emptyState.classList.add('hidden');
+            filtered.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50/80 transition-colors';
+                const badge = categoryBadges[item.category] || 'bg-slate-100 text-slate-700';
+                const isBudgetCat = item.category === 'งบประมาณ';
+                tr.innerHTML = `
+                    <td class="py-3 px-3 text-slate-600 font-medium text-xs sm:text-sm">${formatDateTH(item.date)}</td>
+                    <td class="py-3 px-3"><span class="px-2.5 py-1 rounded-full text-xs font-semibold border ${badge}">${item.category}</span></td>
+                    <td class="py-3 px-3 font-medium text-slate-800 text-xs sm:text-sm">${escapeHtml(item.title)}</td>
+                    <td class="py-3 px-3 text-right font-bold ${isBudgetCat ? 'text-teal-600' : 'text-slate-700'} text-xs sm:text-sm">${isBudgetCat ? '+' : ''}${item.amount.toLocaleString('th-TH', {minimumFractionDigits: 2})} ฿</td>
+                    <td class="py-3 px-3 text-center"><button onclick="deleteExpense(${item.id})" class="text-slate-400 hover:text-red-500 p-1.5 rounded-lg transition"><i class="fa-solid fa-trash-can text-sm"></i></button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        updateSummary();
+    };
+
+    window.updateSummary = function() {
+        let totals = { 'กิจกรรม': 0, 'การเดินทาง': 0, 'ที่พัก': 0, 'อาหาร': 0 };
+        let totalBudgetIncome = 0;
+        let grandExpenseTotal = 0;
+
+        expenses.forEach(i => {
+            if (i.category === 'งบประมาณ') {
+                totalBudgetIncome += i.amount;
+            } else if (totals[i.category] !== undefined) {
+                totals[i.category] += i.amount;
+                grandExpenseTotal += i.amount;
+            }
+        });
+
+        document.getElementById('totalBudget').innerText = formatCurrency(totalBudgetIncome);
+        document.getElementById('totalActivity').innerText = formatCurrency(totals['กิจกรรม']);
+        document.getElementById('totalTransport').innerText = formatCurrency(totals['การเดินทาง']);
+        document.getElementById('totalHotel').innerText = formatCurrency(totals['ที่พัก']);
+        document.getElementById('totalFood').innerText = formatCurrency(totals['อาหาร']);
+        document.getElementById('totalExpense').innerText = formatCurrency(grandExpenseTotal);
+
+        const remaining = totalBudgetIncome - grandExpenseTotal;
+        const card = document.getElementById('remainingCard');
+        const label = document.getElementById('remainingLabel');
+        const val = document.getElementById('remainingBudget');
+
+        if (remaining >= 0) {
+            card.className = 'bg-emerald-50 p-3 rounded-xl border border-emerald-100 text-center transition-colors';
+            label.className = 'text-xs text-emerald-700 font-medium block';
+            label.innerText = 'เงินคงเหลือ';
+            val.className = 'text-lg font-bold text-emerald-600';
+            val.innerText = formatCurrency(remaining);
+        } else {
+            card.className = 'bg-rose-50 p-3 rounded-xl border border-rose-100 text-center transition-colors';
+            label.className = 'text-xs text-rose-700 font-medium block';
+            label.innerText = 'เกินงบประมาณ';
+            val.className = 'text-lg font-bold text-rose-600';
+            val.innerText = formatCurrency(Math.abs(remaining));
+        }
+    };
+
+    function formatCurrency(n) { return n.toLocaleString('th-TH', {minimumFractionDigits: 0, maximumFractionDigits: 2}) + ' ฿'; }
+    function formatDateTH(d) {
+        if (!d) return '';
+        const p = d.split('-');
+        if (p.length !== 3) return d;
+        return `${p[2]}/${p[1]}/${parseInt(p[0])+543}`.substring(0, 10);
+    }
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.innerText = text;
+        return div.innerHTML;
+    }
+
+    window.shareTrip = function() {
+        const currentUrl = window.location.href;
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(currentUrl).then(() => {
+                showModal('คัดลอกลิงก์สำเร็จ', 'คัดลอกลิงก์ทริปนี้เรียบร้อยแล้ว ส่งให้เพื่อนเปิดในมือถือเครื่องอื่นเพื่อบันทึกพร้อมกันได้ทันที');
+            }).catch(() => {
+                prompt('คัดลอกลิงก์ด้านล่างนี้:', currentUrl);
+            });
+        } else {
+            prompt('คัดลอกลิงก์ด้านล่างนี้:', currentUrl);
+        }
+    };
+
+    window.confirmReset = function() {
+        showModal('ยืนยันการรีเซ็ต', 'คุณต้องการล้างข้อมูลทริปและรายการทั้งหมดใช่หรือไม่?', true, async function() {
+            expenses = [];
+            localStorage.removeItem('tb_expenses_data_' + tripId);
+            renderExpenses();
+            await saveDataToCloud();
+        });
+    };
+</script>
+</body>
+</html>
